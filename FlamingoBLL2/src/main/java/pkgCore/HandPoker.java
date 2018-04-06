@@ -47,6 +47,7 @@ public class HandPoker extends Hand {
 			bIsRoyalFlush = true;
 			HSP.seteHandStrength(eHandStrength.RoyalFlush);
 		}
+		return bIsRoyalFlush;
 	}
 
 	public boolean isStraightFlush() {
@@ -57,6 +58,7 @@ public class HandPoker extends Hand {
 			bisStraightFlush = true;
 			HSP.seteHandStrength(eHandStrength.StraightFlush);
 		}
+		return bisStraightFlush;
 	}
 
 	
@@ -66,6 +68,19 @@ public class HandPoker extends Hand {
 	// TODO : Implement this method
 	public boolean isFourOfAKind() {
 		boolean bisFourOfAKind = false;
+		
+		if (this.getCRC().size() == 2) {
+			if (this.getCRC().get(0).getiCnt() == Constants.FOUR_OF_A_KIND) {
+				bisFourOfAKind = true;
+				HandScorePoker HSP = (HandScorePoker) this.getHS();
+				HSP.seteHandStrength(eHandStrength.FourOfAKind);
+				int iGetCard = this.getCRC().get(0).getiCardPosition();
+				HSP.setHiCard(this.getCards().get(iGetCard));
+				HSP.setLoCard(null);
+				HSP.setKickers(FindTheKickers(this.getCRC()));
+				this.setHS(HSP);
+			}
+		}
 		return bisFourOfAKind;
 	}
 
@@ -160,11 +175,12 @@ public class HandPoker extends Hand {
 				HSP.setLoCard(null);
 				HSP.setKickers(FindTheKickers(this.getCRC()));
 				this.setHS(HSP);
+				bisTwoPair = true;
+		}
 		}
 		
-	// TODO : Implement this method
+
 		return bisTwoPair;
-		}
 	}
 
 	public boolean isPair() {
@@ -184,9 +200,9 @@ public class HandPoker extends Hand {
 			HSP.setLoCard(null);
 			HSP.setKickers(FindTheKickers(this.getCRC()));
 			this.setHS(HSP);
-			
-					
+						
 		}
+		return bisHighCard;
 	}
 
 	private ArrayList<Card> FindTheKickers(ArrayList<CardRankCount> CRC) {
