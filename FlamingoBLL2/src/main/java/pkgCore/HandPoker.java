@@ -1,5 +1,7 @@
 package pkgCore;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import pkgConstants.*;
@@ -7,10 +9,12 @@ import pkgEnum.eCardNo;
 import pkgEnum.eHandStrength;
 import pkgEnum.eRank;
 import pkgEnum.eSuit;
+import pkgException.HandException;
 
 public class HandPoker extends Hand {
 
 	private ArrayList<CardRankCount> CRC = null;
+	private HandScorePoker HSP;
 
 	public HandPoker() {
 		this.setHS(new HandScorePoker());
@@ -20,62 +24,89 @@ public class HandPoker extends Hand {
 		return CRC;
 	}
 
+	public HandScorePoker getHSP() {
+		return (HandScorePoker) this.getHS();
+
+	}
+
 	@Override
-	public HandScore ScoreHand() {
-		// TODO : Implement this method... call each of the 'is' methods (isRoyalFlush,
-		// etc) until
-		// one of the hands is true, then score the hand
+	public HandScore ScoreHand() throws Exception {
 
 		Collections.sort(super.getCards());
 		Frequency();
+		HSP = new HandScorePoker();
 
-		if (isRoyalFlush()) {
-
-		} else if (isStraightFlush()) {
-
+		if (super.getCards().size() != 5) {
+			throw new HandException("Not five cards", this);
 		}
 
-		return null;
+		try {
+			Class<?> c = Class.forName("pkgCore.HandPoker");
+
+			for (eHandStrength hstr : eHandStrength.values()) {
+				Method meth = c.getDeclaredMethod(hstr.getEvalMethod(), null);
+				meth.setAccessible(true);
+				Object o = meth.invoke(this, null);
+
+				// If o = true, that means the hand evaluated- skip the rest of
+				// the evaluations
+				if ((Boolean) o) {
+					break;
+				}
+			}
+
+			Method methGetHandScorePoker = c.getDeclaredMethod("getHSP", null);
+			HSP = (HandScorePoker) methGetHandScorePoker.invoke(this, null);
+
+		} catch (ClassNotFoundException x) {
+			x.printStackTrace();
+		} catch (IllegalAccessException x) {
+			x.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		}
+
+		return HSP;
 	}
 
-	public boolean isRoyalFlush() {
+	private boolean isRoyalFlush() {
 		boolean bIsRoyalFlush = false;
-		if(isStraightFlush() && 
-				super.getCards().get(0).geteRank() == eRank.ACE &&
-				super.getCards().get(1).geteRank() == eRank.KING) {
-			HandScorePoker HSP = (HandScorePoker) this.getHS();
+		if (isStraightFlush() == true && super.getCards().get(0).geteRank() == eRank.ACE
+				&& super.getCards().get(1).geteRank() == eRank.KING) {
 			bIsRoyalFlush = true;
 			HSP.seteHandStrength(eHandStrength.RoyalFlush);
+
 		}
 		return bIsRoyalFlush;
 	}
 
 	public boolean isStraightFlush() {
 		boolean bisStraightFlush = false;
-		
-		if(isStraight() && isFlush()) {
-			HandScorePoker HSP = (HandScorePoker) this.getHS();
+
+		if ((isFlush()  && isStraight()) == true ) {
 			bisStraightFlush = true;
 			HSP.seteHandStrength(eHandStrength.StraightFlush);
+
 		}
 		return bisStraightFlush;
 	}
 
-	
-
-	
-	
 	// TODO : Implement this method
 	public boolean isFourOfAKind() {
 		boolean bisFourOfAKind = false;
-		
+
 		if (this.getCRC().size() == 2) {
 			if (this.getCRC().get(0).getiCnt() == Constants.FOUR_OF_A_KIND) {
 				bisFourOfAKind = true;
 				HandScorePoker HSP = (HandScorePoker) this.getHS();
 				HSP.seteHandStrength(eHandStrength.FourOfAKind);
 				int iGetCard = this.getCRC().get(0).getiCardPosition();
-				HSP.setHiCard(this.getCards().get(iGetCard));
+				HSP.setHiCard(super.getCards().get(iGetCard));
 				HSP.setLoCard(null);
 				HSP.setKickers(FindTheKickers(this.getCRC()));
 				this.setHS(HSP);
@@ -87,6 +118,20 @@ public class HandPoker extends Hand {
 	// TODO : Implement this method
 	public boolean isFullHouse() {
 		boolean bisFullHouse = false;
+
+		if (CRC.size() == 2) {
+			if ((CRC.get(0).getiCnt() == 3) && (CRC.get(1).getiCnt() == 2)) {
+				bisFullHouse = true;
+				HandScorePoker HSP = (HandScorePoker) this.getHS();
+				HSP.seteHandStrength(eHandStrength.FullHouse);
+				int iGetCard = this.getCRC().get(0).getiCardPosition();
+				HSP.setHiCard(this.getCards().get(iGetCard));
+				HSP.setLoCard(this.getCards().get(this.getCRC().get(1).getiCardPosition()));
+				HSP.setKickers(FindTheKickers(this.getCRC()));
+				this.setHS(HSP);
+			}
+		}
+
 		return bisFullHouse;
 
 	}
@@ -109,7 +154,7 @@ public class HandPoker extends Hand {
 
 		if (iSuitCnt == iCardCnt) {
 			bisFlush = true;
-		
+
 			HandScorePoker HSP = (HandScorePoker) this.getHS();
 			HSP.seteHandStrength(eHandStrength.Flush);
 			HSP.setHiCard(super.getCards().get(0));
@@ -118,7 +163,7 @@ public class HandPoker extends Hand {
 			HSP.getKickers().remove(0);
 			this.setHS(HSP);
 		}
-		
+
 		else
 			bisFlush = false;
 
@@ -128,21 +173,40 @@ public class HandPoker extends Hand {
 	public boolean isStraight() {
 		boolean bisStraight = true;
 		int a = 0;
-		
-		if (super.getCards().get(0).geteRank() == eRank.ACE && (super.getCards().get(1).geteRank() == eRank.FIVE))
-		{
+		Card highCard = null;
+		highCard = super.getCards().get(0);
+
+		if (super.getCards().get(0).geteRank() == eRank.ACE) {
 			a = 1;
 		}
-		
-		for (; a < super.getCards().size()-1; a++)
-		{
-			if (super.getCards().get(a).geteRank().getiCardValue() - 1 != super.getCards().get(a+1).geteRank().getiCardValue())
-			{
+		for (; a < super.getCards().size() - 1; a++) {
+			if (super.getCards().get(a).geteRank().getiRankNbr() - 1 != super.getCards().get(a + 1).geteRank()
+					.getiRankNbr()) {
+
 				bisStraight = false;
-				break;
 			}
 		}
-		
+
+		if ((super.getCards().get(0).geteRank() == eRank.ACE) && (super.getCards().get(1).geteRank() == eRank.KING)) {
+			
+		}
+		else if ((super.getCards().get(1).geteRank() != eRank.FIVE) && (super.getCards().get(0).geteRank() == eRank.ACE)) {
+
+			bisStraight = false;
+		} else if ((super.getCards().get(1).geteRank() == eRank.FIVE)
+				&& (super.getCards().get(0).geteRank() == eRank.ACE)) {
+			highCard = super.getCards().get(1);
+		}
+
+		if (bisStraight) {
+			HandScorePoker HSP = (HandScorePoker) this.getHS();
+			HSP.seteHandStrength(eHandStrength.Straight);
+			HSP.setHiCard(highCard);
+			HSP.setLoCard(null);
+			HSP.setKickers(null);
+			this.setHS(HSP);
+		}
+
 		return bisStraight;
 	}
 
@@ -151,7 +215,9 @@ public class HandPoker extends Hand {
 	public boolean isThreeOfAKind() {
 		boolean bisThreeOfAKind = false;
 		if (this.getCRC().size() == 3) {
+
 			if (this.getCRC().get(0).getiCnt() == Constants.THREE_OF_A_KIND) {
+				bisThreeOfAKind = true;
 				HandScorePoker HSP = (HandScorePoker) this.getHS();
 				HSP.seteHandStrength(eHandStrength.ThreeOfAKind);
 				int iGetCard = this.getCRC().get(0).getiCardPosition();
@@ -166,8 +232,9 @@ public class HandPoker extends Hand {
 
 	public boolean isTwoPair() {
 		boolean bisTwoPair = false;
-		if(CRC.size() == 3) {
+		if (CRC.size() == 3) {
 			if ((CRC.get(0).getiCnt() == 2) && (CRC.get(1).getiCnt() == 2)) {
+				bisTwoPair = true;
 				HandScorePoker HSP = (HandScorePoker) this.getHS();
 				HSP.seteHandStrength(eHandStrength.TwoPair);
 				int iGetCard = this.getCRC().get(0).getiCardPosition();
@@ -175,23 +242,31 @@ public class HandPoker extends Hand {
 				HSP.setLoCard(null);
 				HSP.setKickers(FindTheKickers(this.getCRC()));
 				this.setHS(HSP);
-				bisTwoPair = true;
+			}
 		}
-		}
-		
-
 		return bisTwoPair;
 	}
 
 	public boolean isPair() {
 		boolean bisPair = false;
-		// TODO : Implement this method
+		if (CRC.size() == 4) {
+			if (CRC.get(0).getiCnt() == 2) {
+				bisPair = true;
+				HandScorePoker HSP = (HandScorePoker) this.getHS();
+				HSP.seteHandStrength(eHandStrength.Pair);
+				int iGetCard = this.getCRC().get(0).getiCardPosition();
+				HSP.setHiCard(this.getCards().get(iGetCard));
+				HSP.setLoCard(null);
+				HSP.setKickers(FindTheKickers(this.getCRC()));
+				this.setHS(HSP);
+			}
+		}
 		return bisPair;
 	}
 
 	public boolean isHighCard() {
 		boolean bisHighCard = false;
-		if(CRC.size() == 5) {
+		if (CRC.size() == 5) {
 			bisHighCard = true;
 			HandScorePoker HSP = (HandScorePoker) this.getHS();
 			HSP.seteHandStrength(eHandStrength.HighCard);
@@ -200,7 +275,6 @@ public class HandPoker extends Hand {
 			HSP.setLoCard(null);
 			HSP.setKickers(FindTheKickers(this.getCRC()));
 			this.setHS(HSP);
-						
 		}
 		return bisHighCard;
 	}

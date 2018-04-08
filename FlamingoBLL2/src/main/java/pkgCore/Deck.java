@@ -9,7 +9,7 @@ import pkgEnum.eSuit;
 
 public class Deck {
 
-	private ArrayList<Card> cardsInDeck;
+	private ArrayList<Card> cardsInDeck = new ArrayList<Card>();
 
 	public Deck() {
 		for (eSuit eSuit : eSuit.values()) {
@@ -25,14 +25,5 @@ public class Deck {
 		return cardsInDeck.remove(0);
 
 	}
-	/*
-	public ArrayList<Card> getDeck()
-	{
-		return deckCards;
-	}
-	public int countRank(eRank eRank)
-	{
-		return deckCards.stream().filter(c -> c.geteRank() = eRank).collect(Collectors.toList()).size();
-	}
-*/
+
 }
